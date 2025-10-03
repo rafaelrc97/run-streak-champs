@@ -6,14 +6,16 @@ import { Label } from "@/components/ui/label";
 import { Camera, Home } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { Split } from "@/types/activity";
 
 const Summary = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { activityType, time, distance, pace, speed } = location.state || {};
+  const { activityType, time, distance, pace, speed, splits } = location.state || {};
   const [feeling, setFeeling] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
+  const [notes, setNotes] = useState("");
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -27,9 +29,10 @@ const Summary = () => {
   };
 
   const handleSave = () => {
+    // TODO: Save to localStorage with storage.ts utility
     toast({
       title: "Atividade salva!",
-      description: "Sua corrida foi registrada com sucesso.",
+      description: `Seu ${activityType} foi registrado com sucesso.`,
     });
     navigate("/dashboard");
   };
@@ -75,6 +78,54 @@ const Summary = () => {
           </div>
         </Card>
 
+        {activityType === 'treino-tiro' && splits && splits.length > 0 && (
+          <Card className="glass-card p-6">
+            <h3 className="text-lg font-bold mb-4">Análise dos Tiros</h3>
+            <div className="space-y-3">
+              {(splits as Split[]).map((split) => (
+                <div key={split.number} className="p-4 bg-muted/20 rounded-lg">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-bold text-lg">Tiro {split.number}</span>
+                    <span className="text-primary font-semibold">{split.avgSpeed.toFixed(1)} km/h</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Distância</p>
+                      <p className="font-medium">{split.distance.toFixed(2)} km</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Tempo</p>
+                      <p className="font-medium">{formatTime(split.duration)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Ritmo</p>
+                      <p className="font-medium">{split.pace} /km</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              <div className="mt-4 p-4 bg-primary/10 rounded-lg">
+                <h4 className="font-semibold mb-2">Estatísticas</h4>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Tiro Mais Rápido</p>
+                    <p className="font-medium">
+                      {Math.max(...(splits as Split[]).map(s => s.avgSpeed)).toFixed(1)} km/h
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Tiro Mais Lento</p>
+                    <p className="font-medium">
+                      {Math.min(...(splits as Split[]).map(s => s.avgSpeed)).toFixed(1)} km/h
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Card>
+        )}
+
         <Card className="glass-card p-6 space-y-4">
           <div>
             <Label>Como você se sentiu?</Label>
@@ -93,9 +144,11 @@ const Summary = () => {
           </div>
 
           <div>
-            <Label htmlFor="notes">Notas da corrida</Label>
+            <Label htmlFor="notes">Notas da atividade</Label>
             <Textarea
               id="notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
               placeholder="Como foi o treino? Alguma observação?"
               className="mt-2 bg-muted/50"
             />
