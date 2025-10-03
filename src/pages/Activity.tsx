@@ -5,6 +5,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { ArrowLeft, Play, Pause, Square, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { calculateDistance, isGoodAccuracy, isSignificantMovement, requestGPSPermission, watchGPSPosition } from "@/lib/gps";
@@ -17,6 +18,11 @@ const Activity = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const userMarker = useRef<mapboxgl.Marker | null>(null);
+  
+  const [mapboxToken, setMapboxToken] = useState<string>(
+    localStorage.getItem('mapbox_token') || ''
+  );
+  const [showTokenInput, setShowTokenInput] = useState(!localStorage.getItem('mapbox_token'));
   
   const [activityType, setActivityType] = useState<string>("corrida");
   const [isActive, setIsActive] = useState(false);
@@ -42,7 +48,7 @@ const Activity = () => {
 
   // Request GPS permission and initialize map
   useEffect(() => {
-    if (!mapContainer.current) return;
+    if (!mapContainer.current || !mapboxToken) return;
 
     const initializeMapAndGPS = async () => {
       try {
@@ -53,7 +59,7 @@ const Activity = () => {
         setLastPosition(position);
 
         // Initialize map centered on user location
-        mapboxgl.accessToken = 'pk.eyJ1IjoibG92YWJsZS1kZXYiLCJhIjoiY20zem5memZyMHo3bTJqcHkzcnZkZnc0ZSJ9.IyULTyr_AtWaffpZdelPpw';
+        mapboxgl.accessToken = mapboxToken;
         
         map.current = new mapboxgl.Map({
           container: mapContainer.current,
@@ -91,7 +97,7 @@ const Activity = () => {
       }
       map.current?.remove();
     };
-  }, []);
+  }, [mapboxToken]);
 
   // Start GPS tracking when activity starts
   useEffect(() => {
@@ -233,11 +239,31 @@ const Activity = () => {
     return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
+  const handleSaveToken = () => {
+    if (mapboxToken.trim()) {
+      localStorage.setItem('mapbox_token', mapboxToken.trim());
+      setShowTokenInput(false);
+      toast({
+        title: "Token Salvo",
+        description: "O mapa será inicializado agora",
+      });
+    }
+  };
+
   const handleStart = () => {
+    if (!mapboxToken) {
+      toast({
+        title: "Token Necessário",
+        description: "Configure seu token do Mapbox primeiro",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (gpsPermission !== 'granted') {
       toast({
         title: "GPS Necessário",
-        description: "Por favor, permita o acesso à sua localização",
+        description: "Por favor, permita o acesso à sua localização. Se estiver no celular, verifique as configurações do app.",
         variant: "destructive",
       });
       return;
@@ -347,10 +373,38 @@ const Activity = () => {
       </header>
 
       <main className="container mx-auto px-4 py-6 space-y-6">
+        {showTokenInput && (
+          <Alert>
+            <AlertDescription className="space-y-3">
+              <p className="font-medium">Configure seu Token do Mapbox</p>
+              <p className="text-sm">Para usar o mapa, você precisa de um token gratuito do Mapbox.</p>
+              <ol className="text-sm list-decimal list-inside space-y-1">
+                <li>Acesse <a href="https://mapbox.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">mapbox.com</a></li>
+                <li>Crie uma conta gratuita</li>
+                <li>Copie seu token público (Public Token)</li>
+                <li>Cole abaixo:</li>
+              </ol>
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  placeholder="pk.eyJ1..."
+                  value={mapboxToken}
+                  onChange={(e) => setMapboxToken(e.target.value)}
+                />
+                <Button onClick={handleSaveToken} size="sm">
+                  Salvar
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {gpsPermission === 'denied' && (
           <Alert variant="destructive">
             <AlertDescription>
-              Permissão de GPS negada. Por favor, habilite a localização nas configurações do seu navegador para usar esta funcionalidade.
+              Permissão de GPS negada. Por favor, habilite a localização nas configurações do seu navegador/dispositivo para usar esta funcionalidade.
+              <br />
+              <strong>No celular:</strong> Acesse Configurações → SpeedRun → Permissões → Localização
             </AlertDescription>
           </Alert>
         )}
@@ -370,7 +424,9 @@ const Activity = () => {
           </Select>
         </Card>
 
-        <div ref={mapContainer} className="w-full h-[300px] rounded-lg" />
+        {!showTokenInput && (
+          <div ref={mapContainer} className="w-full h-[300px] rounded-lg border" />
+        )}
 
         {activityType === 'treino-tiro' && isActive ? (
           <Card className="glass-card p-6 space-y-4">
