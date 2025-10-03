@@ -1,4 +1,4 @@
-# Welcome to your Lovable project
+# SpeedRun - App de Corrida Inteligente
 
 ## Project info
 

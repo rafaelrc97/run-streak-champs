@@ -11,7 +11,7 @@ interface MetricsCardProps {
 
 const MetricsCard = ({ icon: Icon, label, value, change, positive }: MetricsCardProps) => {
   return (
-    <Card className="metric-card">
+    <Card className="metric-card hover:scale-[1.02] transition-all duration-200 cursor-default hover:shadow-lg">
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <p className="text-xs text-muted-foreground mb-1">{label}</p>

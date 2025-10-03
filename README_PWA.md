@@ -1,8 +1,8 @@
-# RunFlow - PWA Setup Guide
+# SpeedRun - PWA Setup Guide
 
 ## 📱 Sobre o App
 
-RunFlow é um aplicativo de corrida inteligente e gamificado que registra todas as suas métricas de treino, permite competir com amigos através de rankings e desafios, e participar de torneios mensais com premiação via PIX.
+SpeedRun é um aplicativo de corrida inteligente e gamificado que registra todas as suas métricas de treino, permite competir com amigos através de rankings e desafios, e participar de torneios mensais com premiação via PIX.
 
 ## ✨ Funcionalidades
 
@@ -43,7 +43,7 @@ RunFlow é um aplicativo de corrida inteligente e gamificado que registra todas 
 git clone <seu-repo-url>
 
 # Entre na pasta do projeto
-cd runflow
+cd speedrun
 
 # Instale as dependências
 npm install
@@ -153,7 +153,7 @@ Para funcionalidades PWA completas (Service Worker, Geolocalização), é necess
 
 ## 📄 Licença
 
-© 2025 RunFlow. Todos os direitos reservados a Rafael Carlos de Assis Santos.
+© 2025 SpeedRun. Todos os direitos reservados a Rafael Carlos de Assis Santos.
 
 ## 🐛 Problemas?
 

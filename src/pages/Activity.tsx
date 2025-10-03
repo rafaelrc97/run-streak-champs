@@ -166,6 +166,7 @@ const Activity = () => {
               <SelectItem value="corrida">🏃 Corrida</SelectItem>
               <SelectItem value="caminhada">🚶 Caminhada</SelectItem>
               <SelectItem value="ciclismo">🚴 Ciclismo</SelectItem>
+              <SelectItem value="treino-tiro">🏃‍♂️💨 Treino de Tiro</SelectItem>
             </SelectContent>
           </Select>
         </Card>

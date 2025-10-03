@@ -1,20 +1,17 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Activity, Trophy, Users, Target, TrendingUp, LogOut, Camera } from "lucide-react";
+import { Activity, Trophy, Target, TrendingUp, LogOut, Camera } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MetricsCard from "@/components/MetricsCard";
-import ChallengeCard from "@/components/ChallengeCard";
 import RankingList from "@/components/RankingList";
 import ActivityFeed from "@/components/ActivityFeed";
+import InstallPWA from "@/components/InstallPWA";
+import AddFriend from "@/components/AddFriend";
 import { useToast } from "@/hooks/use-toast";
-
-interface User {
-  name: string;
-  email: string;
-  photo: string | null;
-}
+import { getCurrentUser, saveUser, calculateWeeklyStats, getWeeklyRanking, getUserActivities } from "@/lib/storage";
+import { User } from "@/types/activity";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -22,11 +19,11 @@ const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    const userData = localStorage.getItem("user");
-    if (!userData) {
+    const currentUser = getCurrentUser();
+    if (!currentUser) {
       navigate("/auth");
     } else {
-      setUser(JSON.parse(userData));
+      setUser(currentUser);
     }
   }, [navigate]);
 
@@ -58,8 +55,14 @@ const Dashboard = () => {
 
   if (!user) return null;
 
+  const weeklyStats = calculateWeeklyStats(user.username);
+  const ranking = getWeeklyRanking();
+  const userPosition = ranking.findIndex(r => r.username === user.username) + 1;
+  const userActivities = getUserActivities(user.username);
+
   return (
     <div className="min-h-screen bg-background">
+      <InstallPWA />
       {/* Header */}
       <header className="glass-card border-b border-border/50 sticky top-0 z-50 backdrop-blur-xl">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -68,11 +71,12 @@ const Dashboard = () => {
               <Activity className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold">RunFlow</h1>
+              <h1 className="text-xl font-bold">SpeedRun</h1>
               <p className="text-sm text-muted-foreground">Bem-vindo, {user.name}!</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <AddFriend />
             <div className="relative">
               <input
                 type="file"
@@ -105,29 +109,22 @@ const Dashboard = () => {
           <MetricsCard
             icon={Activity}
             label="Esta Semana"
-            value="42.5 km"
-            change="+12%"
-            positive
+            value={`${weeklyStats.distance.toFixed(1)} km`}
           />
           <MetricsCard
             icon={Trophy}
             label="Posição"
-            value="#3"
-            change="+2"
-            positive
+            value={userPosition > 0 ? `#${userPosition}` : "-"}
           />
           <MetricsCard
             icon={Target}
-            label="Desafios"
-            value="5/8"
-            change="62%"
+            label="Atividades"
+            value={`${userActivities.length}`}
           />
           <MetricsCard
             icon={TrendingUp}
             label="Ritmo Médio"
-            value="5:30/km"
-            change="-0:15"
-            positive
+            value={weeklyStats.avgPace}
           />
         </div>
 
@@ -142,33 +139,42 @@ const Dashboard = () => {
         </Button>
 
         {/* Tabs */}
-        <Tabs defaultValue="challenges" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="challenges">Desafios</TabsTrigger>
+        <Tabs defaultValue="activities" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="activities">Atividades</TabsTrigger>
             <TabsTrigger value="ranking">Ranking</TabsTrigger>
             <TabsTrigger value="feed">Feed</TabsTrigger>
-            <TabsTrigger value="activities">Atividades</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="challenges" className="space-y-4 mt-6">
-            <ChallengeCard
-              title="5km em 25 minutos"
-              description="Complete 5km em menos de 25 minutos"
-              progress={65}
-              reward="🏅 Medalha Sprint"
-            />
-            <ChallengeCard
-              title="100km no mês"
-              description="Acumule 100km de corrida este mês"
-              progress={42}
-              reward="🏆 Troféu Consistência"
-            />
-            <ChallengeCard
-              title="Vença seus amigos"
-              description="Seja o #1 no ranking semanal"
-              progress={80}
-              reward="👑 Coroa de Campeão"
-            />
+          <TabsContent value="activities" className="mt-6">
+            {userActivities.length === 0 ? (
+              <Card className="glass-card p-8 text-center">
+                <Activity className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-lg font-semibold mb-2">Nenhuma atividade ainda</h3>
+                <p className="text-muted-foreground">
+                  Comece sua primeira corrida agora!
+                </p>
+              </Card>
+            ) : (
+              <Card className="glass-card p-6">
+                <h3 className="text-lg font-semibold mb-4">Minhas Atividades</h3>
+                <div className="space-y-4">
+                  {userActivities.slice(0, 10).map((activity) => (
+                    <div key={activity.id} className="flex items-center justify-between p-4 bg-muted/20 rounded-lg">
+                      <div>
+                        <p className="font-semibold capitalize">{activity.type}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(activity.date).toLocaleDateString('pt-BR')} • {activity.distance.toFixed(2)} km
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-primary">{activity.pace} /km</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="ranking" className="mt-6">
@@ -177,32 +183,6 @@ const Dashboard = () => {
 
           <TabsContent value="feed" className="mt-6">
             <ActivityFeed />
-          </TabsContent>
-
-          <TabsContent value="activities" className="mt-6">
-            <Card className="glass-card p-6">
-              <h3 className="text-lg font-semibold mb-4">Minhas Atividades</h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-muted/20 rounded-lg">
-                  <div>
-                    <p className="font-semibold">Corrida Matinal</p>
-                    <p className="text-sm text-muted-foreground">Hoje • 8.5 km • 42:30</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-primary">5:00/km</p>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between p-4 bg-muted/20 rounded-lg">
-                  <div>
-                    <p className="font-semibold">Treino Intervalado</p>
-                    <p className="text-sm text-muted-foreground">Ontem • 6.2 km • 28:15</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-primary">4:33/km</p>
-                  </div>
-                </div>
-              </div>
-            </Card>
           </TabsContent>
         </Tabs>
 
@@ -220,7 +200,7 @@ const Dashboard = () => {
       {/* Footer */}
       <footer className="border-t border-border/50 mt-12 py-6">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>© 2025 RunFlow. Todos os direitos reservados a Rafael Carlos de Assis Santos.</p>
+          <p>© 2025 SpeedRun. Todos os direitos reservados a Rafael Carlos de Assis Santos.</p>
         </div>
       </footer>
     </div>

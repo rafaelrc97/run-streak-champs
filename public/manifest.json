@@ -1,6 +1,6 @@
 {
-  "name": "RunFlow - App de Corrida Inteligente",
-  "short_name": "RunFlow",
+  "name": "SpeedRun - App de Corrida Inteligente",
+  "short_name": "SpeedRun",
   "description": "Aplicativo de corrida gamificado com métricas, desafios e competições entre amigos",
   "start_url": "/",
   "display": "standalone",

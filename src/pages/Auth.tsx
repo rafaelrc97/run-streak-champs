@@ -1,73 +1,133 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useNavigate } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
 import { Activity } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { saveUser, getAllUsers } from "@/lib/storage";
+import { User } from "@/types/activity";
 
 const Auth = () => {
-  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [registerName, setRegisterName] = useState("");
+  const [registerUsername, setRegisterUsername] = useState("");
+  const [registerEmail, setRegisterEmail] = useState("");
+  const [registerPassword, setRegisterPassword] = useState("");
 
-  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsLoading(true);
-    
-    const formData = new FormData(e.currentTarget);
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
-
-    // Simulação de login - em produção, integrar com Lovable Cloud
-    setTimeout(() => {
-      localStorage.setItem("user", JSON.stringify({
-        email,
-        name: email.split("@")[0],
-        photo: null
-      }));
-      toast({
-        title: "Bem-vindo de volta!",
-        description: "Login realizado com sucesso.",
-      });
-      navigate("/dashboard");
-    }, 1000);
+  const validateUsername = (username: string): boolean => {
+    const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+    return usernameRegex.test(username);
   };
 
-  const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     
-    const formData = new FormData(e.currentTarget);
-    const name = formData.get("name") as string;
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
-
-    // Simulação de cadastro
-    setTimeout(() => {
-      localStorage.setItem("user", JSON.stringify({
-        email,
-        name,
-        photo: null
-      }));
+    if (!loginEmail || !loginPassword) {
       toast({
-        title: "Conta criada!",
-        description: "Bem-vindo ao RunFlow!",
+        title: "Erro",
+        description: "Preencha todos os campos",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Simple auth simulation - find user by email
+    const users = getAllUsers();
+    const user = users.find(u => u.email === loginEmail);
+    
+    if (user) {
+      localStorage.setItem("user", JSON.stringify(user));
+      toast({
+        title: "Bem-vindo de volta!",
+        description: `Olá, ${user.name}!`,
       });
       navigate("/dashboard");
-    }, 1000);
+    } else {
+      toast({
+        title: "Erro",
+        description: "Usuário não encontrado. Crie uma conta primeiro.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRegister = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!registerName || !registerUsername || !registerEmail || !registerPassword) {
+      toast({
+        title: "Erro",
+        description: "Preencha todos os campos",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!validateUsername(registerUsername)) {
+      toast({
+        title: "Username inválido",
+        description: "Use apenas letras, números e underscore (3-20 caracteres)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if username already exists
+    const users = getAllUsers();
+    if (users.some(u => u.username === registerUsername)) {
+      toast({
+        title: "Erro",
+        description: "Username já está em uso. Escolha outro.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (users.some(u => u.email === registerEmail)) {
+      toast({
+        title: "Erro",
+        description: "Email já cadastrado. Faça login.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newUser: User = {
+      name: registerName,
+      username: registerUsername,
+      email: registerEmail,
+      photo: null,
+      friends: [],
+    };
+
+    saveUser(newUser);
+    localStorage.setItem("user", JSON.stringify(newUser));
+
+    toast({
+      title: "Conta criada!",
+      description: `Bem-vindo, @${registerUsername}!`,
+    });
+
+    navigate("/dashboard");
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-background to-primary/10">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[var(--gradient-primary)] mb-4">
-            <Activity className="w-8 h-8 text-white" />
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-secondary/10" />
+      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iY3VycmVudENvbG9yIiBzdHJva2Utb3BhY2l0eT0iMC4wNSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-40" />
+      
+      <div className="z-10 w-full max-w-md space-y-8 animate-fade-in">
+        <div className="text-center">
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center mx-auto mb-4 shadow-elegant animate-scale-in">
+            <Activity className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-4xl font-bold gradient-text mb-2">RunFlow</h1>
+          <h1 className="text-4xl font-bold gradient-text mb-2">SpeedRun</h1>
           <p className="text-muted-foreground">Corra. Compete. Conquiste.</p>
         </div>
 
@@ -75,76 +135,90 @@ const Auth = () => {
           <Tabs defaultValue="login" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="login">Entrar</TabsTrigger>
-              <TabsTrigger value="signup">Cadastrar</TabsTrigger>
+              <TabsTrigger value="register">Cadastrar</TabsTrigger>
             </TabsList>
 
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                <div>
+                  <Label htmlFor="login-email">Email</Label>
                   <Input
-                    id="email"
-                    name="email"
+                    id="login-email"
                     type="email"
                     placeholder="seu@email.com"
-                    required
-                    className="bg-muted/50"
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    className="mt-1"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Senha</Label>
+                <div>
+                  <Label htmlFor="login-password">Senha</Label>
                   <Input
-                    id="password"
-                    name="password"
+                    id="login-password"
                     type="password"
                     placeholder="••••••••"
-                    required
-                    className="bg-muted/50"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    className="mt-1"
                   />
                 </div>
-                <Button type="submit" className="w-full" variant="gradient" disabled={isLoading}>
-                  {isLoading ? "Entrando..." : "Entrar"}
+                <Button type="submit" className="w-full" variant="gradient">
+                  Entrar
                 </Button>
               </form>
             </TabsContent>
 
-            <TabsContent value="signup">
-              <form onSubmit={handleSignup} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="signup-name">Nome</Label>
+            <TabsContent value="register">
+              <form onSubmit={handleRegister} className="space-y-4">
+                <div>
+                  <Label htmlFor="register-name">Nome Completo</Label>
                   <Input
-                    id="signup-name"
-                    name="name"
+                    id="register-name"
                     type="text"
-                    placeholder="Seu nome"
-                    required
-                    className="bg-muted/50"
+                    placeholder="João Silva"
+                    value={registerName}
+                    onChange={(e) => setRegisterName(e.target.value)}
+                    className="mt-1"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
+                <div>
+                  <Label htmlFor="register-username">Username</Label>
                   <Input
-                    id="signup-email"
-                    name="email"
+                    id="register-username"
+                    type="text"
+                    placeholder="joaosilva"
+                    value={registerUsername}
+                    onChange={(e) => setRegisterUsername(e.target.value.toLowerCase())}
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    3-20 caracteres, apenas letras, números e underscore
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="register-email">Email</Label>
+                  <Input
+                    id="register-email"
                     type="email"
                     placeholder="seu@email.com"
-                    required
-                    className="bg-muted/50"
+                    value={registerEmail}
+                    onChange={(e) => setRegisterEmail(e.target.value)}
+                    className="mt-1"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password">Senha</Label>
+                <div>
+                  <Label htmlFor="register-password">Senha</Label>
                   <Input
-                    id="signup-password"
-                    name="password"
+                    id="register-password"
                     type="password"
                     placeholder="••••••••"
-                    required
-                    className="bg-muted/50"
+                    value={registerPassword}
+                    onChange={(e) => setRegisterPassword(e.target.value)}
+                    className="mt-1"
                   />
                 </div>
-                <Button type="submit" className="w-full" variant="gradient" disabled={isLoading}>
-                  {isLoading ? "Criando conta..." : "Criar conta"}
+                <Button type="submit" className="w-full" variant="gradient">
+                  Criar Conta
                 </Button>
               </form>
             </TabsContent>
